@@ -72,6 +72,7 @@ int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global
 
 static struct list sleep_list;
 int64_t global_ticks;
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -223,6 +224,14 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+    /* 
+     * compare the priorities of the currently running thread and the newly inserted one.
+     * Yield the CPU if the newly arriving thread has higher priority    
+     */
+	if (thread_current()->priority < t->priority) {
+		thread_yield();
+	}
+
 	return tid;
 }
 
@@ -256,7 +265,9 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem);
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
+
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -327,7 +338,10 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
+	// set priority of the current thread
 	thread_current ()->priority = new_priority;
+	// reorder the ready_list
+	list_sort(&ready_list, cmp_priority, NULL);
 }
 
 /* Returns the current thread's priority. */
@@ -666,4 +680,13 @@ int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global
 	int64_t b = list_entry(min, struct thread, elem)->local_ticks;
 
 	return a < b;
+}
+
+/* 우선순위에 따라 리스트 요소 A와 B를 비교합니다. 
+   A의 우선순위가 B의 우선순위보다 높으면 true를 반환합니다.
+   이 함수는 list_insert_ordered의 인자로 사용됩니다. */
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+    struct thread *thread_a = list_entry(a, struct thread, elem);
+    struct thread *thread_b = list_entry(b, struct thread, elem);
+    return thread_a->priority > thread_b->priority;
 }
