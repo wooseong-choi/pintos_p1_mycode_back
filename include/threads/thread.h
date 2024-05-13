@@ -87,15 +87,19 @@ typedef int tid_t;
  * blocked state is on a semaphore wait list. */
 struct thread {
 	/* Owned by thread.c. */
-	tid_t tid;                          /* Thread identifier. */
-	enum thread_status status;          /* Thread state. */
-	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
-	int64_t local_ticks;				/* Local Ticks */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    int priority;                       /* Priority. */
+    int origin_priority;                       /* Priority. */
+    int64_t local_ticks;                /* Local Ticks */
 
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem;              /* List element. */
-
+	 /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+    struct lock *wait_on_lock;          /* 기다리고 있는 Lock */
+    struct list donations;              /* 해당 스레드에게 기부된 우선순위 리스트 */
+    struct list_elem d_elem;            /* Donation List element */
+	
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -147,4 +151,9 @@ void do_iret (struct intr_frame *tf);
 void thread_sleep(int64_t ticks);
 void thread_wakeup(int64_t ticks);
 
+int priority_less (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool 
+cmp_priority(const struct list_elem *elem_h, const struct list_elem *elem_l, void *aux UNUSED);
+bool 
+cmp_ticks(const struct list_elem *elem_l, const struct list_elem *elem_h, void *aux UNUSED);
 #endif /* threads/thread.h */
