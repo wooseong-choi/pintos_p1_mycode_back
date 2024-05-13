@@ -265,8 +265,9 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	// list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem); // 
 	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
+	// list_push_back() 하고 list_sort() 하는 게 아니라, 처음부터 정렬해서 삽입
 
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
@@ -330,7 +331,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();					// 인터럽트 비활성화
 	if (curr != idle_thread)						// idle thread가 아니라면
-		list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
+		// list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
+		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); // insert_ordered
 	do_schedule (THREAD_READY);						// 스케쥴러 호출
 	intr_set_level (old_level);						// 이전에 저장한 인터럽트 레벨 복원
 }
@@ -338,10 +340,8 @@ thread_yield (void) {
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	// set priority of the current thread
-	thread_current ()->priority = new_priority;
-	// reorder the ready_list
-	list_sort(&ready_list, cmp_priority, NULL);
+	thread_current ()->priority = new_priority;	// set priority of the current thread
+	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
 /* Returns the current thread's priority. */
