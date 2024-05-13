@@ -221,16 +221,15 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 	// woo's code
-	t->priority = PRI_DEFAULT;
-	t->wait_on_lock = NULL; 
-	
+	t->wait_on_lock = NULL;
+	t->origin_priority = t->priority;
 	/* Add to run queue. */
 	thread_unblock (t);
 
 	// 1. 실행중인 스레드와 새로 삽입된 스레드의 우선순위를 비교
 	// 2. 만약 새로 들어온 스레드의 우선순위가 높다면 CPU 양보
 	if (thread_get_priority() < t->priority ){
-		// schedule();
+		schedule();
 		thread_yield();
 	}
 
@@ -343,9 +342,10 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	int max_priority = list_entry( list_max(&ready_list, priority_less, NULL), struct thread, elem )->priority;
 	//ready_list 재정렬
-	list_sort(&ready_list, priority_less, NULL);
-
+	if (max_priority > new_priority)
+		list_sort(&ready_list, priority_less, NULL);
 }
 
 /* Returns the current thread's priority. */
@@ -455,7 +455,7 @@ next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
 	else
-		return list_entry (list_pop_front (&ready_list), struct thread, elem);
+		return list_entry (list_pop_back (&ready_list), struct thread, elem);
 }
 
 /* Use iretq to launch the thread */
@@ -659,7 +659,7 @@ void thread_wakeup(int64_t ticks)
 		{
 			curr_thread->status = THREAD_READY;					                            // 상태 READY로 변경
 			curr_elem = list_remove(curr_elem);					                            // sleep_list에서 삭제 
-			list_push_back(&ready_list, &curr_thread->elem);	                      		// ready_list에 삽입
+			list_insert_ordered(&ready_list, &curr_thread->elem, priority_less, NULL);	                      		// ready_list에 삽입
 		}
 		else
 		{		

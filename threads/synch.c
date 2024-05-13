@@ -193,24 +193,20 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!lock_held_by_current_thread (lock));
 	
 	struct thread *curr_thread;
-
-	// sema_down (&lock->semaphore);
 	curr_thread = thread_current ();
 	// lock을 습득하지 않았다면, lock의 주소를 저장한다.
 	
-	if( !lock_try_acquire(lock) ){
-		curr_thread->wait_on_lock = lock;
-		list_insert_ordered(&curr_thread->donations, &curr_thread->d_elem, priority_less, NULL);
+	// if( !lock_try_acquire(lock) ){
+	// 	curr_thread->wait_on_lock = lock;
+	// 	list_insert_ordered(&lock->holder->donations, &curr_thread->d_elem, priority_less, NULL);
 
-		struct list_elem *curr_elem = list_begin(&curr_thread->donations);
-		
-		curr_thread->priority = list_entry( list_max(&curr_thread->donations, priority_less, NULL),struct thread, elem )->priority;
-
-		
-	}else{
+	// 	struct list_elem *curr_elem = list_begin(&lock->holder->donations);
+	// 	int pri = list_entry( list_max(&lock->holder->donations, priority_less, NULL),struct thread, elem )->priority;
+	// 	curr_thread->priority = pri > curr_thread->priority?pri:curr_thread->priority;	
+	// }
 		sema_down (&lock->semaphore);
+		
 		lock->holder = curr_thread;
-	}
 
 
 }
@@ -252,8 +248,8 @@ lock_release (struct lock *lock) {
 	// while( list_next(temp) != NULL  ){
 	// 	if(temp == locker){
 	// 		printf("find!");
-	list_remove(locker);
-	list_sort(&locker->donations, priority_less, NULL);
+	// list_remove(locker);
+	// list_sort(&locker->donations, priority_less, NULL);
 	// 	}
 	// }
 	lock->holder = NULL;
@@ -338,10 +334,13 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
 
-	if (!list_empty (&cond->waiters))
+	if (!list_empty (&cond->waiters)){
+
 		// 우선순위 높은 순으로 빼도록 수정
+		list_sort(&cond->waiters, priority_less, NULL);
 		sema_up (&list_entry (list_pop_back (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
+	}
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
