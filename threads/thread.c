@@ -68,7 +68,7 @@ void thread_sleep(int64_t ticks);
 void thread_wakeup(int64_t ticks);
 int64_t get_global_ticks(void);
 void update_global_ticks(int64_t ticks);
-int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global_tick );
+int64_t find_min_less(struct list_elem *e,struct list_elem *min, int64_t global_tick);
 
 static struct list sleep_list;
 int64_t global_ticks;
@@ -223,6 +223,9 @@ thread_create (const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock (t);
 
+	// 1. 실행중인 스레드와 새로 삽입된 스레드의 우선순위를 비교
+	// 2. 만약 새로 들어온 스레드의 우선순위가 높다면 CPU 양보
+	
 	return tid;
 }
 
@@ -631,23 +634,25 @@ void thread_sleep(int64_t ticks)
 void thread_wakeup(int64_t ticks)
 {
 	enum intr_level old_level;
+	struct list_elem *curr_elem = list_begin(&sleep_list);
 
-	if(!list_empty(&sleep_list))
+	while (curr_elem != list_end(&sleep_list))
 	{
-		// 리스트에서 local_tick이 최소인 스레드 가져옴
-		struct thread *min_thread = list_entry(list_min(&sleep_list, find_min_less, NULL), struct thread, elem);
-		
-		if(min_thread->local_ticks <= ticks)
-		{
-			old_level = intr_disable(); // 인터럽트 비활성화
-			
-			min_thread->status = THREAD_READY;		
-			list_remove(&min_thread->elem);
-			list_push_back(&ready_list, &min_thread->elem);
+		struct thread *curr_thread = list_entry(curr_elem, struct thread, elem);			// 해당 리스트 포인터가 가리키는 스레드
 
-			intr_set_level(old_level);
+		if (ticks >= curr_thread->local_ticks)					                          	// 깨워야 할 시간이면,
+		{
+			curr_thread->status = THREAD_READY;					                            // 상태 READY로 변경
+			curr_elem = list_remove(curr_elem);					                            // sleep_list에서 삭제 
+			list_push_back(&ready_list, &curr_thread->elem);	                      		// ready_list에 삽입
 		}
+		else
+		{		
+			curr_elem = list_next(curr_elem);					                            // 다음 노드로 이동
+		}
+		update_global_ticks(curr_thread->local_ticks);			                      		// 최소 tick 값 갱신		
 	}
+	intr_set_level(old_level);
 }
 
 int64_t get_global_ticks(void)
@@ -660,7 +665,7 @@ void update_global_ticks(int64_t ticks)
 	global_ticks = global_ticks > ticks ? global_ticks : ticks;
 }
 
-int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global_tick )
+int64_t find_min_less(struct list_elem *e,struct list_elem *min, int64_t global_tick)
 {
 	int64_t a = list_entry(e, struct thread, elem)->local_ticks;
 	int64_t b = list_entry(min, struct thread, elem)->local_ticks;
