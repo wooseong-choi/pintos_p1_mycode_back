@@ -86,15 +86,17 @@ typedef int tid_t;
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
 struct thread {
-	/* Owned by thread.c. */
-	tid_t tid;                          /* Thread identifier. */
-	enum thread_status status;          /* Thread state. */
-	char name[16];                      /* Name (for debugging purposes). */
-	int priority;                       /* Priority. */
-	int64_t local_ticks;				/* Local Ticks */
-
-	/* Shared between thread.c and synch.c. */
-	struct list_elem elem;              /* List element. */
+    /* Owned by thread.c. */
+    tid_t tid;                          /* Thread identifier. */
+    enum thread_status status;          /* Thread state. */
+    char name[16];                      /* Name (for debugging purposes). */
+    int priority;                       /* Priority. */
+    int64_t local_ticks;                /* Local Ticks */
+    /* Shared between thread.c and synch.c. */
+    struct list_elem elem;              /* List element. */
+    struct lock *wait_on_lock;          /* 기다리고 있는 Lock */
+    struct list donations;              /* 해당 스레드에게 기부된 우선순위 리스트 */
+    struct list_elem d_elem;            /* Donation List element */
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
