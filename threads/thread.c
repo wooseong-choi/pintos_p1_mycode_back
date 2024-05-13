@@ -70,6 +70,7 @@ int64_t get_global_ticks(void);
 void update_global_ticks(int64_t ticks);
 int64_t find_min_less(struct list_elem *e,struct list_elem *min, int64_t global_tick);
 
+
 static struct list sleep_list;
 int64_t global_ticks;
 
@@ -219,12 +220,20 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
-
+	// woo's code
+	t->priority = PRI_DEFAULT;
+	t->wait_on_lock = NULL; 
+	
 	/* Add to run queue. */
 	thread_unblock (t);
 
 	// 1. 실행중인 스레드와 새로 삽입된 스레드의 우선순위를 비교
 	// 2. 만약 새로 들어온 스레드의 우선순위가 높다면 CPU 양보
+	if (thread_get_priority() < t->priority ){
+		// schedule();
+		thread_yield();
+	}
+
 	
 	return tid;
 }
@@ -259,7 +268,9 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	// list_push_back (&ready_list, &t->elem);
+	// 스레드가 unblocked 되었을 때, 우선순위에 따라서 ready_list에 삽입
+	list_insert_ordered(&ready_list, &t->elem, priority_less, NULL);
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -322,7 +333,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();					// 인터럽트 비활성화
 	if (curr != idle_thread)						// idle thread가 아니라면
-		list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
+		list_insert_ordered(&ready_list, &curr->elem, priority_less,NULL);	// ready_list에 현재 스레드 추가
+	// 현재 스레드가 CPU 점유를 해제하고 우선순위에 따라 ready_list에 삽입됨
 	do_schedule (THREAD_READY);						// 스케쥴러 호출
 	intr_set_level (old_level);						// 이전에 저장한 인터럽트 레벨 복원
 }
@@ -331,6 +343,9 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	//ready_list 재정렬
+	list_sort(&ready_list, priority_less, NULL);
+
 }
 
 /* Returns the current thread's priority. */
@@ -671,4 +686,15 @@ int64_t find_min_less(struct list_elem *e,struct list_elem *min, int64_t global_
 	int64_t b = list_entry(min, struct thread, elem)->local_ticks;
 
 	return a < b;
+}
+/* Returns true if value A is less than value B, false
+   otherwise. */
+int
+priority_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  int a = list_entry (a_, struct thread, elem)->priority;
+  int b = list_entry (b_, struct thread, elem)->priority;
+  
+  return a < b;
 }
