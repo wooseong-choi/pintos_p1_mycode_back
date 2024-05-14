@@ -350,6 +350,7 @@ thread_set_priority (int new_priority) {
 	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
+
 /* Returns the current thread's priority. */
 int
 thread_get_priority (void) {
