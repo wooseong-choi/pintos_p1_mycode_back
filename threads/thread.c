@@ -220,6 +220,9 @@ thread_create (const char *name, int priority,
 	t->tf.ss = SEL_KDSEG;
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
+	
+	t->wait_on_lock = NULL;
+	list_init(&t->d_elem);
 
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -265,9 +268,8 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	// list_push_back (&ready_list, &t->elem); // 
-	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
-	// list_push_back() 하고 list_sort() 하는 게 아니라, 처음부터 정렬해서 삽입
+	// list_push_back (&ready_list, &t->elem); // list_insert_ordered로 변경
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);	// list_push_back() 하고 list_sort() 하는 게 아니라, 처음부터 정렬해서 삽입
 
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
@@ -341,6 +343,7 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
+	/*현재 러닝 쓰레드보다 우선순위가 높으면 강탈하는 로직*/
 	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 

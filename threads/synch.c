@@ -32,6 +32,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -66,11 +67,12 @@ sema_down (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	while (sema->value == 0) {
-		list_push_back (&sema->waiters, &thread_current ()->elem);
-		thread_block ();
+		list_insert_ordered(&sema->waiters, &thread_current ()->elem, cmp_priority, NULL);	// list_push_back을 교체
+		// list_push_back (&sema->waiters, &thread_current ()->elem);	// 현재 스레드를 세마포어의 대기자 목록에 추가
+		thread_block ();	// 현재 스레드를 block상태롤 전환
 	}
-	sema->value--;
-	intr_set_level (old_level);
+	sema->value--;	// 리소스 하나 사용
+	intr_set_level (old_level);	// 작업 완료 후 저장해두었던 이전 인터럽트 레벨로 복원
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -110,8 +112,8 @@ sema_up (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	if (!list_empty (&sema->waiters))
-		thread_unblock (list_entry (list_pop_front (&sema->waiters),
-					struct thread, elem));
+		thread_unblock (list_entry (list_pop_back (&sema->waiters),
+					struct thread, elem)); // list_pop_front를 list_pop_back으로 변경
 	sema->value++;
 	intr_set_level (old_level);
 }
@@ -184,12 +186,12 @@ lock_init (struct lock *lock) {
    we need to sleep. */
 void
 lock_acquire (struct lock *lock) {
-	ASSERT (lock != NULL);
-	ASSERT (!intr_context ());
-	ASSERT (!lock_held_by_current_thread (lock));
+	ASSERT (lock != NULL);	// lock이 NULL이 아님을 확인
+	ASSERT (!intr_context ()); // 인터럽트 컨텍스트가 아님을 확인
+	ASSERT (!lock_held_by_current_thread (lock));	// 현재 스레드가 lock을 이미 보유하고 있지 않음을 확인
 
-	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+	sema_down (&lock->semaphore);	// 세마포어를 이용해 lock을 획득하려고 시도
+	lock->holder = thread_current ();	// lock의 소유자를 현재 스레드로 설정
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
