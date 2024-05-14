@@ -91,6 +91,7 @@ struct thread {
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     int priority;                       /* Priority. */
+    int origin_priority;                       /* origin-Priority. */
     int64_t local_ticks;                /* Local Ticks */
 
 	 /* Shared between thread.c and synch.c. */
@@ -151,5 +152,5 @@ void thread_sleep(int64_t ticks);
 void thread_wakeup(int64_t ticks);
 
 int priority_less (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
-
+int priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 #endif /* threads/thread.h */

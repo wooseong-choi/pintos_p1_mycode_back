@@ -15,6 +15,7 @@
 #include "userprog/process.h"
 #endif
 
+
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
@@ -229,7 +230,7 @@ thread_create (const char *name, int priority,
 	// 1. 실행중인 스레드와 새로 삽입된 스레드의 우선순위를 비교
 	// 2. 만약 새로 들어온 스레드의 우선순위가 높다면 CPU 양보
 	if (thread_get_priority() < t->priority ){
-		schedule();
+		// schedule();
 		thread_yield();
 	}
 
@@ -344,8 +345,10 @@ thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
 	int max_priority = list_entry( list_max(&ready_list, priority_less, NULL), struct thread, elem )->priority;
 	//ready_list 재정렬
-	if (max_priority > new_priority)
+	if (max_priority > new_priority){
+		thread_yield();
 		list_sort(&ready_list, priority_less, NULL);
+	}
 }
 
 /* Returns the current thread's priority. */
@@ -443,6 +446,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+	list_init(&t->donations);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -657,9 +661,16 @@ void thread_wakeup(int64_t ticks)
 
 		if (ticks >= curr_thread->local_ticks)					                          	// 깨워야 할 시간이면,
 		{
-			curr_thread->status = THREAD_READY;					                            // 상태 READY로 변경
+			// curr_thread->status = THREAD_READY;					                            // 상태 READY로 변경
 			curr_elem = list_remove(curr_elem);					                            // sleep_list에서 삭제 
-			list_insert_ordered(&ready_list, &curr_thread->elem, priority_less, NULL);	                      		// ready_list에 삽입
+			// list_insert_ordered(&ready_list, &curr_thread->elem, priority_less, NULL);	                      		// ready_list에 삽입
+			thread_unblock(curr_thread); // 
+			// 1. 실행중인 스레드와 새로 삽입된 스레드의 우선순위를 비교
+			// 2. 만약 새로 들어온 스레드의 우선순위가 높다면 CPU 양보
+			if (thread_get_priority() < curr_thread->priority ){
+				// schedule();
+				thread_yield();
+			}
 		}
 		else
 		{		
@@ -695,6 +706,17 @@ priority_less (const struct list_elem *a_, const struct list_elem *b_,
 {
   int a = list_entry (a_, struct thread, elem)->priority;
   int b = list_entry (b_, struct thread, elem)->priority;
+  
+  return a < b;
+}
+/* Returns true if value A is less than value B, false
+   otherwise. */
+int
+priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  int a = list_entry (a_, struct thread, d_elem)->priority;
+  int b = list_entry (b_, struct thread, d_elem)->priority;
   
   return a < b;
 }
