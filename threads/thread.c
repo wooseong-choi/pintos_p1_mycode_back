@@ -343,7 +343,10 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
-	/*현재 러닝 쓰레드보다 우선순위가 높으면 강탈하는 로직*/
+	struct thread *max = list_entry( list_max(&ready_list, cmp_priority, NULL),struct thread, elem);/*현재 러닝 쓰레드보다 우선순위가 높으면 강탈하는 로직*/
+	if (max->priority > thread_current()->priority) {
+		thread_yield();
+	}
 	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
@@ -454,7 +457,7 @@ next_thread_to_run (void) {
 	if (list_empty (&ready_list))
 		return idle_thread;
 	else
-		return list_entry (list_pop_front (&ready_list), struct thread, elem);
+		return list_entry (list_pop_back (&ready_list), struct thread, elem); // list_pop_front를 list_pop_back으로 변경
 }
 
 /* Use iretq to launch the thread */
