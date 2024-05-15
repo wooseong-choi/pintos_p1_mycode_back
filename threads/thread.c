@@ -710,7 +710,7 @@ void preemption()
 	list_sort(&ready_list, cmp_priority, NULL);
 
 	struct thread *cur = thread_current();
-	if (!list_empty(&ready_list) && cur->priority < list_entry(list_front(&ready_list)
+	if (!list_empty(&ready_list) && cur->priority < list_entry(list_max(&ready_list, cmp_priority, NULL)
 														, struct thread, elem)->priority)
 	{
 		thread_yield();

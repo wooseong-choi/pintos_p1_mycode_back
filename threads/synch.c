@@ -35,6 +35,9 @@
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void preemption();
 bool cmp_priority_use_sema(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+bool priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+void donate(struct lock *lock);
+int find_max_priority_from_lock( struct lock *wlock, int priority_do );
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -120,8 +123,7 @@ sema_up (struct semaphore *sema) {
 		struct list_elem* li_elem = list_min (&sema->waiters, cmp_priority, NULL);
 		list_remove(li_elem);
 		// printf("여기입니다. = %d ] ", list_entry(li_elem, struct thread, elem)->priority);
-		thread_unblock (list_entry (li_elem,
-					struct thread, elem));
+		thread_unblock (list_entry (li_elem, struct thread, elem));
 	}
 	sema->value++;
 
@@ -208,8 +210,25 @@ lock_acquire (struct lock *lock) {
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
-	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+	// sema_down (&lock->semaphore);
+	// lock->holder = thread_current ();
+
+	// lock 요청 후 실패시 도네이션
+	if( !lock_try_acquire(lock) ){
+		thread_current ()->wait_on_lock = lock;
+		list_insert_ordered(&lock->holder->donations, &thread_current ()->d_elem, cmp_priority, NULL);
+		
+		if(lock->holder->priority > thread_get_priority()){
+			// thread_current()->origin_priority = thread_get_priority();
+			thread_current()->priority = lock->holder->priority;
+		}
+		// donate(lock);
+	}else{
+		// lock->holder = thread_current ();
+	}
+	// else{
+		// lock->holder = thread_current ();
+	// }
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -244,6 +263,21 @@ lock_release (struct lock *lock) {
 
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
+
+	// if(!list_empty( &thread_current()->donations ) ){
+	// 	struct list_elem* temp = list_begin(&thread_current()->donations);
+	// 	if( &thread_current()->elem == temp ){
+	// 		list_remove( temp );
+	// 	}else{
+	// 		while( list_next(temp) != NULL ){
+	// 			if( &thread_current()->elem == temp )
+	// 				list_remove( temp );
+	// 			temp = list_next(temp);	
+	// 		}
+	// 	}
+	// 	list_sort(&thread_current()->donations, priority_less_d_elem, NULL);
+	// }
+
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -371,4 +405,53 @@ bool cmp_priority_use_sema(const struct list_elem *a, const struct list_elem *b,
 	struct thread *th_b = list_entry( list_max(&sema_b->semaphore.waiters, cmp_priority, NULL), struct thread, elem);
 
 	return th_a->priority > th_b->priority;
+}
+
+/* Returns true if value A is less than value B, false
+   otherwise. */
+bool
+priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  int a = list_entry (a_, struct thread, d_elem)->priority;
+  int b = list_entry (b_, struct thread, d_elem)->priority;
+  
+  return a > b;
+}
+
+
+void donate(struct lock *lock){
+	int max_priority = list_entry(list_max(&lock->holder->donations, priority_less_d_elem, NULL), struct thread, d_elem)->priority;
+	
+	
+	// 도네이션 리스트가 있다면
+	if( lock->holder->wait_on_lock!= NULL ){
+		max_priority = find_max_priority_from_lock(&lock->holder->wait_on_lock, max_priority);
+	}
+	// while 
+	
+	if ( max_priority > lock->holder->priority ){
+		lock->holder->origin_priority = lock->holder->priority;
+		lock->holder->priority = max_priority;
+	}
+	// lock->semaphore.waiters
+
+}
+
+int find_max_priority_from_lock( struct lock *wlock, int priority_do ){
+	int max_priority = priority_do;
+	printf("function in %d", max_priority);
+	if ( wlock->holder->wait_on_lock != NULL ){
+		int temp_priority = find_max_priority_from_lock( wlock->holder->wait_on_lock, wlock->holder->priority );
+
+		max_priority = ( temp_priority > max_priority ) ? temp_priority : max_priority;
+
+		wlock->holder->priority = max_priority;
+	}else{
+		if (wlock->holder->priority > max_priority ){
+			max_priority = wlock->holder->priority;
+		}
+	}
+	printf(" : function out %d\n", max_priority);
+	return max_priority;
 }
