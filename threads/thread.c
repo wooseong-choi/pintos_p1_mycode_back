@@ -28,6 +28,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* new data structure - the list of blocked threads - sleep_list */
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -108,6 +111,7 @@ thread_init (void) {
 	/* Init the globla thread context */
 	lock_init (&tid_lock);
 	list_init (&ready_list);
+	list_init (&sleep_list);
 	list_init (&destruction_req);
 
 	/* Set up a thread structure for the running thread. */
@@ -587,4 +591,26 @@ allocate_tid (void) {
 	lock_release (&tid_lock);
 
 	return tid;
+}
+
+/* current thread가 idle thread가 아니라면,
+쓰레드의 상태를 BLOCKED로 바꾸고
+로컬 틱을 저장
+글로벌 틱을 업데이트(그것이 로컬 틱 중에 minimum이라면)
+schedule() 호출(컨텍스트 스위치)
+잊지 말 것 - 쓰레드 리스트에 쓰레드 스트럭처를 삽입할 때, disable interrupt 하는 것을 잊지 말 것 */
+void thread_sleep(int64_t ticks)
+{
+    struct thread *curr;
+    enum intr_level old_level;
+    old_level = intr_disable(); // 인터럽트 비활성
+
+    curr = thread_current();     // 현재 스레드
+    ASSERT(curr != idle_thread); // 현재 스레드가 idle이 아닐 때만
+
+    curr->wakeup_ticks = ticks;     // 일어날 시각 저장
+    list_insert_ordered(&sleep_list, &curr->elem, cmp_thread_ticks, NULL); // sleep_list에 추가
+    thread_block(); // 현재 스레드 재우기
+
+    intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
