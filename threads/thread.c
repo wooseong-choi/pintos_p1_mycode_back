@@ -335,7 +335,22 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
-	list_sort(&ready_list, cmp_thread_priority, NULL); // reorder the ready_list
+	//list_insert_ordered(&ready_list, &thread_current()->elem, cmp_thread_priority, NULL);
+	// list_sort(&ready_list, cmp_thread_priority, NULL); // reorder the ready_list
+	preempt_priority();
+}
+
+// ready_list의 priority가 현재 스레드의 priority보다 높으면 양보하는 함수
+void
+preempt_priority(void) {
+    if (thread_current() == idle_thread)
+        return;
+    if (list_empty(&ready_list))
+        return;
+    struct thread *curr = thread_current();
+    struct thread *ready = list_entry(list_front(&ready_list), struct thread, elem);
+    if (curr->priority < ready->priority) // ready_list에 현재 실행중인 스레드보다 우선순위가 높은 스레드가 있으면
+        thread_yield();
 }
 
 /* Returns the current thread's priority. */
