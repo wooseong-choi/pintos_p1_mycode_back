@@ -11,7 +11,8 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
-#include <devices/timer.c>
+// #include <devices/timer.c> // multiple definiton 컴파일 오류 발생
+#include <include/lib/kernel/list.h>
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -181,6 +182,7 @@ thread_print_stats (void) {
    The code provided sets the new thread's `priority' member to
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
+// 쓰레드 생성 및 초기화
 tid_t
 thread_create (const char *name, int priority,
 		thread_func *function, void *aux) {
@@ -209,8 +211,19 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	t->priority = priority;
+
 	/* Add to run queue. */
 	thread_unblock (t);
+
+    /* 
+    compare the priorities of the currently running thread and the newly inserted one.
+    Yield the CPU if the newly arriving thread has higher priority    
+    */
+    struct thread *curr = thread_current();
+	if (t->priority > curr->priority) {
+		thread_yield();
+	}
 
 	return tid;
 }
@@ -237,15 +250,17 @@ thread_block (void) {
    be important: if the caller had disabled interrupts itself,
    it may expect that it can atomically unblock a thread and
    update other data. */
+// priority 순으로 ready_list에 삽입
 void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
 
-	ASSERT (is_thread (t));
+	ASSERT (is_thread (t)); // t가 NULL이거나 magic?이거나
 
-	old_level = intr_disable ();
-	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	old_level = intr_disable (); // 인터럽트 멈춰!
+	ASSERT (t->status == THREAD_BLOCKED); // t 상태가 blocked가 아니면 오류
+	// list_push_back (&ready_list, &t->elem); // list_insert_ordered로 대체
+	list_insert_ordered(&ready_list, &t->elem, cmp_thread_priority, NULL); // 우선순위 내림차순으로 ready_list 삽입
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -299,6 +314,7 @@ thread_exit (void) {
 
 /* Yields the CPU.  The current thread is not put to sleep and
    may be scheduled again immediately at the scheduler's whim. */
+// The current thread yields CPU and it is inserted to ready_list in priority order
 void
 thread_yield (void) {
 	struct thread *curr = thread_current ();
@@ -308,15 +324,18 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		// list_push_back (&ready_list, &curr->elem); // list_insert_ordered로 대체
+		list_insert_ordered(&ready_list, &curr->elem, cmp_thread_priority, NULL); // 우선순위 오름차순으로 ready_list 삽입
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
+// set proirity of the current thread and reorder the ready_list
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	list_sort(&ready_list, cmp_thread_priority, NULL); // reorder the ready_list
 }
 
 /* Returns the current thread's priority. */
@@ -402,6 +421,7 @@ kernel_thread (thread_func *function, void *aux) {
 
 /* Does basic initialization of T as a blocked thread named
    NAME. */
+// 쓰레드 초기화
 static void
 init_thread (struct thread *t, const char *name, int priority) {
 	ASSERT (t != NULL);
@@ -616,7 +636,7 @@ void thread_sleep(int64_t ticks)
     intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
 
-// 두 스레드의 wakeup_ticks를 비교해서 작으면 true를 반환하는 함수
+// 두 스레드의 wakeup_ticks를 비교해서 a가 작으면 true를 반환하는 함수
 bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
 {
     struct thread *st_a = list_entry(a, struct thread, elem);
@@ -624,6 +644,15 @@ bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void
     return st_a->wakeup_ticks < st_b->wakeup_ticks;
 }
 
+// 두 스레드의 priority를 비교해서 a가 크면 true를 반환하는 함수
+bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+    struct thread *st_a = list_entry(a, struct thread, elem);
+    struct thread *st_b = list_entry(b, struct thread, elem);
+    return st_a->priority > st_b->priority;
+}
+
+// thread를 sleep_list에서 ready_list로 이동시키는(깨우는) 함수
 void thread_wakeup (int64_t global_ticks)
 {
 	enum intr_level old_level;
@@ -644,3 +673,5 @@ void thread_wakeup (int64_t global_ticks)
     }
     intr_set_level(old_level); // 인터럽트 상태를 원래 상태로 변경
 }
+
+

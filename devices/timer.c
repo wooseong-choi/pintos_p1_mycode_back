@@ -71,17 +71,19 @@ timer_calibrate (void) {
 }
 
 /* Returns the number of timer ticks since the OS booted. */
+// 함수 호출 시점에서 os부팅 후 경과한 총 틱 수 
 int64_t
 timer_ticks (void) {
-	enum intr_level old_level = intr_disable ();
-	int64_t t = ticks;
-	intr_set_level (old_level);
-	barrier ();
+	enum intr_level old_level = intr_disable (); // 인터럽트 비활성화
+	int64_t t = ticks; // os부팅 후 경과한 총 틱 수를 t에 저장(리턴 예정)
+	intr_set_level (old_level); // 인터럽트 레벨 복원
+	barrier (); // 컴파일러 최적화가 변수 t의 값을 읽는 순서를 변경하지 않도록 보장
 	return t;
 }
 
 /* Returns the number of timer ticks elapsed since THEN, which
    should be a value once returned by timer_ticks(). */
+// then 시점 이후로 경과한 틱 수
 int64_t
 timer_elapsed (int64_t then) {
 	return timer_ticks () - then;

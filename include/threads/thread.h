@@ -148,7 +148,10 @@ void do_iret (struct intr_frame *tf);
 
 /* CUSTOM */
 void thread_sleep(int64_t ticks); // current thread가 idle thread가 아니라면, 쓰레드의 상태를 BLOCKED로 바꾸고 로컬 틱을 저장
-bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void *aux); // 두 스레드의 wakeup_ticks를 비교해서 작으면 true를 반환하는 함수
+bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void *aux); // 두 스레드의 wakeup_ticks를 비교해서 a가 작으면 true를 반환하는 함수
 void thread_wakeup (int64_t global_ticks); // thread를 sleep_list에서 ready_list로 이동시키는(깨우는) 함수
+bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); // 두 스레드의 priority를 비교해서 a가 크면 true를 반환하는 함수
+
+
 
 #endif /* threads/thread.h */
