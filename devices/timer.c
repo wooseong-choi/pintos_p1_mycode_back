@@ -121,10 +121,16 @@ timer_print_stats (void) {
 }
 
 /* Timer interrupt handler. */
+/* code to add
+sleep list와 global tick을 체크
+wakeup 할 쓰레드를 찾고
+ready list로 move
+글로벌 틱 업데이트(필요하다면) */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
-	thread_tick ();
+	thread_tick (); // update the cpu usage for running process
+    thread_wakeup(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
