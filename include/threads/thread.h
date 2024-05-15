@@ -3,7 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
-#include <stdint.h>
+#include <stdint.h> 
 #include "threads/interrupt.h"
 #ifdef VM
 #include "vm/vm.h"
@@ -91,6 +91,7 @@ struct thread {
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     int priority;                       /* Priority. */
+    int priority_origin;                /* origin-Priority. */
     int64_t local_ticks;                /* Local Ticks */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

@@ -1,7 +1,7 @@
 #include "threads/thread.h"
 #include <debug.h>
 #include <stddef.h>
-#include <random.h>
+#include <random.h> 
 #include <stdio.h>
 #include <string.h>
 #include "threads/flags.h"
@@ -209,7 +209,7 @@ thread_create (const char *name, int priority,
 	/* Initialize thread. */
 	init_thread (t, name, priority);
 	tid = t->tid = allocate_tid ();
-
+	// printf("티아이디 %d\n",tid);
 	/* Call the kernel_thread if it scheduled.
 	 * Note) rdi is 1st argument, and rsi is 2nd argument. */
 	t->tf.rip = (uintptr_t) kernel_thread;
@@ -221,6 +221,8 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
+	t->wait_on_lock = NULL;
+	list_init(&t->d_elem);
 	/* Add to run queue. */
 	thread_unblock (t);
 
@@ -341,6 +343,15 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
+	struct thread *max = list_entry( list_max( &ready_list, cmp_priority , NULL ), struct thread, elem );
+
+	
+	if( max->priority > thread_current()->priority ){
+		thread_yield();
+		
+	}
+	
+
 	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
@@ -651,15 +662,17 @@ void thread_wakeup(int64_t ticks)
 		// 리스트에서 local_tick이 최소인 스레드 가져옴
 		struct thread *min_thread = list_entry(list_min(&sleep_list, find_min_less, NULL), struct thread, elem);
 		
-		if(min_thread->local_ticks <= ticks)
-		{
-			old_level = intr_disable(); // 인터럽트 비활성화
+		while( min_thread->local_ticks <= ticks ){
 			
+			old_level = intr_disable(); // 인터럽트 비활성화
+				
 			min_thread->status = THREAD_READY;		
 			list_remove(&min_thread->elem);
-			list_push_back(&ready_list, &min_thread->elem);
+			// list_push_back(&ready_list, &min_thread->elem);
+			list_insert_ordered(&ready_list, &min_thread->elem, cmp_priority, NULL);
 
 			intr_set_level(old_level);
+			min_thread = list_entry(list_min(&sleep_list, find_min_less, NULL), struct thread, elem);
 		}
 	}
 }
@@ -689,4 +702,18 @@ bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *au
     struct thread *thread_a = list_entry(a, struct thread, elem);
     struct thread *thread_b = list_entry(b, struct thread, elem);
     return thread_a->priority > thread_b->priority;
+}
+
+void preemption()
+{
+	enum intr_level old_level = intr_disable();
+	list_sort(&ready_list, cmp_priority, NULL);
+
+	struct thread *cur = thread_current();
+	if (!list_empty(&ready_list) && cur->priority < list_entry(list_front(&ready_list)
+														, struct thread, elem)->priority)
+	{
+		thread_yield();
+	}
+	intr_set_level(old_level);
 }

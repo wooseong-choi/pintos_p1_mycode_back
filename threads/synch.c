@@ -32,6 +32,8 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 
+bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+void preemption();
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
    manipulating it:
@@ -66,10 +68,12 @@ sema_down (struct semaphore *sema) {
 
 	old_level = intr_disable ();
 	while (sema->value == 0) {
-		list_push_back (&sema->waiters, &thread_current ()->elem);
+		list_insert_ordered( &sema->waiters, &thread_current ()->elem, cmp_priority, NULL );
+		// list_push_back (&sema->waiters, &thread_current ()->elem);
 		thread_block ();
 	}
 	sema->value--;
+
 	intr_set_level (old_level);
 }
 
@@ -107,12 +111,25 @@ sema_up (struct semaphore *sema) {
 	enum intr_level old_level;
 
 	ASSERT (sema != NULL);
-
+	// struct thread *max;
 	old_level = intr_disable ();
-	if (!list_empty (&sema->waiters))
-		thread_unblock (list_entry (list_pop_front (&sema->waiters),
+	if (!list_empty (&sema->waiters)){
+		// list_sort(&sema->waiters, cmp_priority, NULL);
+		struct list_elem* li_elem = list_max (&sema->waiters, cmp_priority, NULL);
+		list_remove(li_elem);
+		thread_unblock (list_entry (li_elem,
 					struct thread, elem));
+	}
 	sema->value++;
+
+	// if(!list_empty (&sema->waiters)){
+	// 	list_sort(&sema->waiters, cmp_priority, NULL);
+	// 	if( max->priority > thread_current()->priority ){
+	// 		thread_yield();
+	// 	}
+	// }
+	preemption();
+
 	intr_set_level (old_level);
 }
 
@@ -321,3 +338,13 @@ cond_broadcast (struct condition *cond, struct lock *lock) {
 	while (!list_empty (&cond->waiters))
 		cond_signal (cond, lock);
 }
+
+
+/* 우선순위에 따라 리스트 요소 A와 B를 비교합니다. 
+   A의 우선순위가 B의 우선순위보다 높으면 true를 반환합니다.
+   이 함수는 list_insert_ordered의 인자로 사용됩니다. */
+// bool cmp_sema_value(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) {
+//     struct semaphore *semaphore_a = list_entry(a, struct semaphore, waiters);
+//     struct semaphore *semaphore_b = list_entry(b, struct semaphore, waiters);
+//     return semaphore_a->value > semaphore_b->value;
+// }
