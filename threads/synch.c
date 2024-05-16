@@ -268,7 +268,7 @@ lock_release (struct lock *lock) {
 
 	if(!list_empty( &curr->donations ) ){
 		struct list_elem* temp = list_begin(&curr->donations);
-		while( list_next(temp) != NULL ){
+		while( temp != list_end(&curr->donations)  ){
 			struct thread *temp_th = list_entry( temp, struct thread, d_elem );
 			if( lock == temp_th->wait_on_lock ) list_remove( &temp_th->d_elem );
 
@@ -278,6 +278,7 @@ lock_release (struct lock *lock) {
 	}
 	
 	update_priority();
+	
 	intr_set_level(old_level);
 
 	lock->holder = NULL;
@@ -434,14 +435,34 @@ priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_,
 
 void donate2( struct lock * lock ){
 
-	int max_priority = lock->holder->priority;
+	// int max_priority = lock->holder->priority;
 	
-	for (struct list_elem* temp = list_begin (&lock->holder->donations); temp!=NULL&&temp != list_end(&lock->holder->donations); temp = list_next(temp))
+	// for (struct list_elem* temp = list_begin (&lock->holder->donations); temp!=NULL&&temp != list_end(&lock->holder->donations); temp = list_next(temp))
+	// {
+	// 	struct thread * temp_th = list_entry(temp, struct thread, d_elem);
+	// 	max_priority = temp_th->priority > max_priority?temp_th->priority:max_priority;
+	// }
+	// lock->holder->priority = max_priority;
+
+	struct thread *doner = thread_current();
+	int cnt = 1;
+	// for (size_t i = 0; i < 8; i++)
 	{
-		struct thread * temp_th = list_entry(temp, struct thread, d_elem);
-		max_priority = temp_th->priority > max_priority?temp_th->priority:max_priority;
+		while (doner->wait_on_lock != NULL)
+		{
+			if (cnt++ >= 8) return;
+			struct thread *donatee = doner->wait_on_lock->holder;
+
+			if (donatee->priority < doner->priority) {
+				donatee->priority = doner->priority;
+				doner = donatee;
+			}
+			else {
+				break;
+			}
+		}
 	}
-	lock->holder->priority = max_priority;
+
 }
 
 void redonate2( struct lock* lock ){

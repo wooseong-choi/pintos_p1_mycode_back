@@ -344,15 +344,17 @@ thread_yield (void) {
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
+	thread_current ()->origin_priority = new_priority;	// set priority of the current thread
+
 	struct thread *max = list_entry( list_max( &ready_list, cmp_priority , NULL ), struct thread, elem );
 
+	printf("max_thread : %d", max->priority);
 	
 	if( max->priority > thread_current()->priority ){
 		thread_yield();
 		
 	}
 	
-
 	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
@@ -450,6 +452,8 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
+	// 중요 매우 중요 나는 감자다 2
+	t->origin_priority = priority;
 	t->magic = THREAD_MAGIC;
 	list_init(&t->donations);
 }
