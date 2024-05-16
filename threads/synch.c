@@ -57,18 +57,21 @@ sema_init (struct semaphore *sema, unsigned value) {
    interrupts disabled, but if it sleeps then the next scheduled
    thread will probably turn interrupts back on. This is
    sema_down function. */
+// sema value를 감소시키고, 쓰레드를 대기 상태로 전환
 void
 sema_down (struct semaphore *sema) {
 	enum intr_level old_level;
 
-	ASSERT (sema != NULL);
-	ASSERT (!intr_context ());
+	ASSERT (sema != NULL); // 세마포어 초기화가 되어있는지 여부를 확인 
+	ASSERT (!intr_context ()); // 시스템이 외부 인터럽트 처리 중이 아님을 확인
 
-	old_level = intr_disable ();
-	while (sema->value == 0) {
-		list_push_back (&sema->waiters, &thread_current ()->elem);
+	old_level = intr_disable (); // 인터럽트 멈춰!
+	while (sema->value == 0) { // sema value가 0이면(리소스가 사용 중이면) 무한루프, 대기
+		// 누군가 sema_up을 해서 sema value가 0이 아니게 되면, 루프 탈출
+		list_insert_ordered (&sema->waiters, &thread_current ()->elem, cmp_thread_priority, NULL);
 		thread_block ();
 	}
+
 	sema->value--;
 	intr_set_level (old_level);
 }
@@ -109,11 +112,13 @@ sema_up (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
-	if (!list_empty (&sema->waiters))
-		thread_unblock (list_entry (list_pop_front (&sema->waiters),
-					struct thread, elem));
+	if (!list_empty (&sema->waiters)) {
+		list_sort(&sema->waiters, cmp_thread_priority, NULL);
+		thread_unblock (list_entry (list_pop_front (&sema->waiters), struct thread, elem));
+	}
 	sema->value++;
 	intr_set_level (old_level);
+	preempt_priority();
 }
 
 static void sema_test_helper (void *sema_);

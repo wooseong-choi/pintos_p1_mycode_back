@@ -212,7 +212,7 @@ thread_create (const char *name, int priority,
 	t->tf.eflags = FLAG_IF;
 
 	t->priority = priority;
-
+	
 	/* Add to run queue. */
 	thread_unblock (t);
 
@@ -255,7 +255,7 @@ void
 thread_unblock (struct thread *t) {
 	enum intr_level old_level;
 
-	ASSERT (is_thread (t)); // t가 NULL이거나 magic?이거나
+	ASSERT (is_thread (t)); // t가 NULL이면서 magic?이면 ASSERT
 
 	old_level = intr_disable (); // 인터럽트 멈춰!
 	ASSERT (t->status == THREAD_BLOCKED); // t 상태가 blocked가 아니면 오류
