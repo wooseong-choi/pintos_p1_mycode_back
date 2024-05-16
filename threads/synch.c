@@ -37,6 +37,8 @@ void preemption();
 bool cmp_priority_use_sema(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 bool priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 void donate(struct lock *lock);
+void update_priority();
+// void donate(struct thread *t);
 int find_max_priority_from_lock( struct lock *wlock, int priority_do );
 /* Initializes semaphore SEMA to VALUE.  A semaphore is a
    nonnegative integer along with two atomic operators for
@@ -120,8 +122,9 @@ sema_up (struct semaphore *sema) {
 	if (!list_empty (&sema->waiters)){
 		list_sort(&sema->waiters, cmp_priority, NULL);
 		// 정렬이 내림차순이니 최소값을 가져가는게 즉 최대값이 되어버림
-		struct list_elem* li_elem = list_min (&sema->waiters, cmp_priority, NULL);
-		list_remove(li_elem);
+		// struct list_elem* li_elem = list_min (&sema->waiters, cmp_priority, NULL);
+		struct list_elem* li_elem = list_pop_front (&sema->waiters);
+		// list_remove(li_elem);
 		// printf("여기입니다. = %d ] ", list_entry(li_elem, struct thread, elem)->priority);
 		thread_unblock (list_entry (li_elem, struct thread, elem));
 	}
@@ -206,31 +209,30 @@ lock_init (struct lock *lock) {
    we need to sleep. */
 void
 lock_acquire (struct lock *lock) {
-	ASSERT (lock != NULL);
-	ASSERT (!intr_context ());
-	ASSERT (!lock_held_by_current_thread (lock));
+    ASSERT (lock != NULL);
+    ASSERT (!intr_context ());
+    ASSERT (!lock_held_by_current_thread (lock));
 
-	// sema_down (&lock->semaphore);
-	// lock->holder = thread_current ();
+	struct thread * curr = thread_current();
 
-	// lock 요청 후 실패시 도네이션
-	if( !lock_try_acquire(lock) ){
-		thread_current ()->wait_on_lock = lock;
-		list_insert_ordered(&lock->holder->donations, &thread_current ()->d_elem, cmp_priority, NULL);
-		
-		if(lock->holder->priority > thread_get_priority()){
-			// thread_current()->origin_priority = thread_get_priority();
-			thread_current()->priority = lock->holder->priority;
-		}
-		// donate(lock);
-	}else{
-		// lock->holder = thread_current ();
-	}
-	// else{
-		// lock->holder = thread_current ();
-	// }
+	// enum intr_level old_level = intr_disable();
+    if (lock -> holder != NULL){
+        // lock을 현재 스레드에게 저장한다.(대기중)
+		curr->wait_on_lock = lock;
+        list_insert_ordered(&lock->holder->donations, &curr->d_elem, cmp_priority, NULL);
+
+        donate2(lock);
+    }
+	// intr_set_level(old_level);
+
+
+
+    sema_down (&lock->semaphore);
+	curr->wait_on_lock = NULL;
+    lock->holder = curr;
+    // lock 요청 후 실패시 도네이션
+	
 }
-
 /* Tries to acquires LOCK and returns true if successful or false
    on failure.  The lock must not already be held by the current
    thread.
@@ -261,23 +263,25 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
 
+	enum intr_level old_level = intr_disable();
+	struct thread * curr = thread_current();
+
+	if(!list_empty( &curr->donations ) ){
+		struct list_elem* temp = list_begin(&curr->donations);
+		while( list_next(temp) != NULL ){
+			struct thread *temp_th = list_entry( temp, struct thread, d_elem );
+			if( lock == temp_th->wait_on_lock ) list_remove( &temp_th->d_elem );
+
+			temp = list_next(temp);	
+		}
+		// list_sort(&thread_current()->donations, priority_less_d_elem, NULL);
+	}
+	
+	update_priority();
+	intr_set_level(old_level);
+
 	lock->holder = NULL;
 	sema_up (&lock->semaphore);
-
-	// if(!list_empty( &thread_current()->donations ) ){
-	// 	struct list_elem* temp = list_begin(&thread_current()->donations);
-	// 	if( &thread_current()->elem == temp ){
-	// 		list_remove( temp );
-	// 	}else{
-	// 		while( list_next(temp) != NULL ){
-	// 			if( &thread_current()->elem == temp )
-	// 				list_remove( temp );
-	// 			temp = list_next(temp);	
-	// 		}
-	// 	}
-	// 	list_sort(&thread_current()->donations, priority_less_d_elem, NULL);
-	// }
-
 }
 
 /* Returns true if the current thread holds LOCK, false
@@ -419,6 +423,47 @@ priority_less_d_elem (const struct list_elem *a_, const struct list_elem *b_,
   return a > b;
 }
 
+// void donate(struct thread *t)
+// {
+//     while (t -> wait_on_lock != NULL && t -> wait_on_lock -> holder != NULL && t->priority > t->wait_on_lock->holder->priority)
+//     {
+//         t->wait_on_lock->holder->priority = t->priority;
+//         t = t->wait_on_lock->holder;
+//     }
+// }
+
+void donate2( struct lock * lock ){
+
+	int max_priority = lock->holder->priority;
+	
+	for (struct list_elem* temp = list_begin (&lock->holder->donations); temp!=NULL&&temp != list_end(&lock->holder->donations); temp = list_next(temp))
+	{
+		struct thread * temp_th = list_entry(temp, struct thread, d_elem);
+		max_priority = temp_th->priority > max_priority?temp_th->priority:max_priority;
+	}
+	lock->holder->priority = max_priority;
+}
+
+void redonate2( struct lock* lock ){
+
+
+
+}
+
+void update_priority()
+{
+	struct thread *curr_thread = thread_current();
+
+	curr_thread->priority = curr_thread->origin_priority;
+
+	if (!list_empty(&curr_thread->donations))		// Consider Multiple Donation
+	{
+		struct thread *highest_donations = list_entry(list_front(&curr_thread->donations), struct thread, d_elem);
+
+		if (highest_donations->priority > curr_thread->priority)
+			curr_thread->priority = highest_donations->priority;
+	}	
+}
 
 void donate(struct lock *lock){
 	int max_priority = list_entry(list_max(&lock->holder->donations, priority_less_d_elem, NULL), struct thread, d_elem)->priority;
@@ -440,7 +485,7 @@ void donate(struct lock *lock){
 
 int find_max_priority_from_lock( struct lock *wlock, int priority_do ){
 	int max_priority = priority_do;
-	printf("function in %d", max_priority);
+	// printf("function in %d", max_priority);
 	if ( wlock->holder->wait_on_lock != NULL ){
 		int temp_priority = find_max_priority_from_lock( wlock->holder->wait_on_lock, wlock->holder->priority );
 
@@ -452,6 +497,6 @@ int find_max_priority_from_lock( struct lock *wlock, int priority_do ){
 			max_priority = wlock->holder->priority;
 		}
 	}
-	printf(" : function out %d\n", max_priority);
+	// printf(" : function out %d\n", max_priority);
 	return max_priority;
 }
