@@ -73,7 +73,7 @@ int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global
 static struct list sleep_list;
 int64_t global_ticks;
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
-
+void update();
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
 
@@ -222,7 +222,7 @@ thread_create (const char *name, int priority,
 	t->tf.cs = SEL_KCSEG;
 	t->tf.eflags = FLAG_IF;
 
-	t->wait_on_lock = NULL;
+	
 	// list_init(&t->d_elem);
 	/* Add to run queue. */
 	thread_unblock (t);
@@ -334,8 +334,8 @@ thread_yield (void) {
 
 	old_level = intr_disable ();					// 인터럽트 비활성화
 	if (curr != idle_thread)						// idle thread가 아니라면
-		// list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
 		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); // insert_ordered
+		// list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
 	do_schedule (THREAD_READY);						// 스케쥴러 호출
 	intr_set_level (old_level);						// 이전에 저장한 인터럽트 레벨 복원
 }
@@ -345,17 +345,18 @@ void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
 	thread_current ()->origin_priority = new_priority;	// set priority of the current thread
+	update();
 
+	// if (list_empty(&ready_list) ) return;
 	struct thread *max = list_entry( list_max( &ready_list, cmp_priority , NULL ), struct thread, elem );
 
-	printf("max_thread : %d", max->priority);
-	
+	// printf("max_thread : %d", max->priority);
+	// preemption();
 	if( max->priority > thread_current()->priority ){
 		thread_yield();
-		
 	}
 	
-	list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
+	// list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
 
 /* Returns the current thread's priority. */
@@ -456,6 +457,7 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->origin_priority = priority;
 	t->magic = THREAD_MAGIC;
 	list_init(&t->donations);
+	t->wait_on_lock = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -722,4 +724,22 @@ void preemption()
 		thread_yield();
 	}
 	intr_set_level(old_level);
+}
+
+/* customed */
+void update()
+{
+	// thread_current()->priority = thread_current()->origin_priority;
+
+	if (!list_empty(&thread_current()->donations)) 
+	{
+		struct list_elem *e = list_front(&thread_current()->donations);
+		struct thread *max_t = list_entry(e, struct thread, d_elem);
+		// printf("\n*** cur pri: %d, max pri: %d \n", thread_current()->priority, max_t->priority);
+
+		if (thread_current()->priority < max_t->priority) {
+			thread_current()->priority = max_t->priority;
+			return;
+		}
+	}
 }
