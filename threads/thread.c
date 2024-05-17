@@ -73,6 +73,7 @@ int64_t find_min_less (struct list_elem *e,struct list_elem *min, int64_t global
 static struct list sleep_list;
 int64_t global_ticks;
 bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+bool cmp_priority_delem(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void update();
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -130,7 +131,7 @@ thread_init (void) {
 	init_thread (initial_thread, "main", PRI_DEFAULT);
 	initial_thread->status = THREAD_RUNNING;
 	initial_thread->tid = allocate_tid ();
-	initial_thread->local_ticks = 0;
+	// initial_thread->local_ticks = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -331,11 +332,11 @@ thread_yield (void) {
 	enum intr_level old_level;						// 현재 인터럽트 활성화 상태 체크
 
 	ASSERT (!intr_context ());						
-
 	old_level = intr_disable ();					// 인터럽트 비활성화
-	if (curr != idle_thread)						// idle thread가 아니라면
+	if (curr != idle_thread){
+		// idle thread가 아니라면
 		list_insert_ordered(&ready_list, &curr->elem, cmp_priority, NULL); // insert_ordered
-		// list_push_back (&ready_list, &curr->elem);	// ready_list에 현재 스레드 추가
+	}						
 	do_schedule (THREAD_READY);						// 스케쥴러 호출
 	intr_set_level (old_level);						// 이전에 저장한 인터럽트 레벨 복원
 }
@@ -345,16 +346,12 @@ void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;	// set priority of the current thread
 	thread_current ()->origin_priority = new_priority;	// set priority of the current thread
-	update();
 
 	// if (list_empty(&ready_list) ) return;
 	struct thread *max = list_entry( list_max( &ready_list, cmp_priority , NULL ), struct thread, elem );
 
-	// printf("max_thread : %d", max->priority);
-	// preemption();
-	if( max->priority > thread_current()->priority ){
-		thread_yield();
-	}
+	update();
+	preemption();
 	
 	// list_sort(&ready_list, cmp_priority, NULL);	// reorder the ready_list
 }
@@ -453,11 +450,11 @@ init_thread (struct thread *t, const char *name, int priority) {
 	strlcpy (t->name, name, sizeof t->name);
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
-	// 중요 매우 중요 나는 감자다 2
-	t->origin_priority = priority;
 	t->magic = THREAD_MAGIC;
+	// 중요 매우 중요 나는 감자다 2
 	list_init(&t->donations);
 	t->wait_on_lock = NULL;
+	t->origin_priority = priority;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -656,7 +653,7 @@ void thread_sleep(int64_t ticks)
 		curr->status = THREAD_BLOCKED;
 		curr->local_ticks = ticks;						// 재울 시간 저장
 	}
-	update_global_ticks(ticks);							// 최소 tick 값 갱신
+	// update_global_ticks(ticks);							// 최소 tick 값 갱신
 	schedule();
 	intr_set_level(old_level);
 }
@@ -715,11 +712,12 @@ bool cmp_priority(const struct list_elem *a, const struct list_elem *b, void *au
 void preemption()
 {
 	enum intr_level old_level = intr_disable();
-	list_sort(&ready_list, cmp_priority, NULL);
+	// list_sort(&ready_list, cmp_priority, NULL);
 
 	struct thread *cur = thread_current();
-	if (!list_empty(&ready_list) && cur->priority < list_entry(list_max(&ready_list, cmp_priority, NULL)
-														, struct thread, elem)->priority)
+	
+	// if (!list_empty(&ready_list) && cur->priority < list_entry(list_max(&ready_list, cmp_priority, NULL), struct thread, elem)->priority)
+	if (!list_empty(&ready_list) && cur->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority)
 	{
 		thread_yield();
 	}
@@ -729,10 +727,10 @@ void preemption()
 /* customed */
 void update()
 {
-	// thread_current()->priority = thread_current()->origin_priority;
-
+	thread_current()->priority = thread_current()->origin_priority;
 	if (!list_empty(&thread_current()->donations)) 
 	{
+		list_sort(&thread_current()->donations, cmp_priority_delem, NULL);
 		struct list_elem *e = list_front(&thread_current()->donations);
 		struct thread *max_t = list_entry(e, struct thread, d_elem);
 		// printf("\n*** cur pri: %d, max pri: %d \n", thread_current()->priority, max_t->priority);
