@@ -1,3 +1,3 @@
 threads/fixed_point_arithmetic.o: ../../threads/fixed_point_arithmetic.c \
- ../../include/threads/fixed_point_arithmethic.h \
+ ../../include/threads/fixed_point_arithmetic.h \
  ../../include/lib/stdint.h

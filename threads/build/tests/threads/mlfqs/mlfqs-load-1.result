@@ -1,12 +1,12 @@
 FAIL
 Kernel panic in run: PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
-Call stack: 0x80042142a5 0x8004214521 0x8004207fdd 0x800420dfb5 0x8004209123 0x8004209541 0x800420dcf1 0x80042060f7
+Call stack: 0x80042141f0 0x800421446c 0x8004207f9d 0x800420df00 0x800420906e 0x800420948c 0x800420dc3c 0x80042060f7
 Translation of call stack:
-0x00000080042142a5: debug_panic (lib/kernel/debug.c:32)
-0x0000008004214521: list_next (lib/kernel/list.c:79)
-0x0000008004207fdd: recarculate_priority (threads/thread.c:795)
-0x000000800420dfb5: timer_interrupt (devices/timer.c:149)
-0x0000008004209123: intr_handler (threads/interrupt.c:352)
-0x0000008004209541: intr_entry (threads/intr-stubs.o:?)
-0x000000800420dcf1: timer_calibrate (devices/timer.c:66)
+0x00000080042141f0: debug_panic (lib/kernel/debug.c:32)
+0x000000800421446c: list_next (lib/kernel/list.c:79)
+0x0000008004207f9d: recarculate_priority (threads/thread.c:791)
+0x000000800420df00: timer_interrupt (devices/timer.c:149)
+0x000000800420906e: intr_handler (threads/interrupt.c:352)
+0x000000800420948c: intr_entry (threads/intr-stubs.o:?)
+0x000000800420dc3c: timer_calibrate (devices/timer.c:66)
 0x00000080042060f7: main (threads/init.c:119)

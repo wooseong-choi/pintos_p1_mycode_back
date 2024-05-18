@@ -5,7 +5,7 @@ Pintos booting with:
 	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
 	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
 Thread Name: main/nCalibrating timer...  Kernel PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
-Call stack: 0x80042142a5 0x8004214521 0x8004207fdd 0x800420dfb5 0x8004209123 0x8004209541 0x800420dcf1 0x80042060f7.
+Call stack: 0x80042141f0 0x800421446c 0x8004207f9d 0x800420df00 0x800420906e 0x800420948c 0x800420dc3c 0x80042060f7.
 The `backtrace' program can make call stacks useful.
 Read "Backtraces" in the "Debugging Tools" chapter
 of the Pintos documentation for more information.
