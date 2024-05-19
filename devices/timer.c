@@ -7,6 +7,8 @@
 #include "threads/io.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/fixed_point_arithmetic.h"
+
 
 /* See [8254] for hardware details of the 8254 timer chip. */
 
@@ -139,9 +141,22 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;							// 타이머 인터럽트가 발생한 횟수 업데이트
 	thread_tick ();						// 현재 실행 중인 스레드의 실행 시간 측정
 
+	if (thread_mlfqs)
+	{
+		increase_recent_cpu();
+		
+		if(ticks % TIMER_FREQ == 0){
+			carculate_load_avg();
+			recarculate_recent_cpu();
+		}
+		if(ticks % 4 == 0){
+			recarculate_priority();
+		}
+	}
 	int64_t min_ticks = get_global_ticks();
 	if (min_ticks <= ticks)
 		thread_wakeup(ticks);
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

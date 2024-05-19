@@ -210,16 +210,18 @@ lock_acquire (struct lock *lock) {
 
 	struct thread * curr = thread_current();
 
-    if (lock -> holder != NULL){
-        // lock을 현재 스레드에게 저장한다.(대기중)
-		curr->wait_on_lock = lock;
-		// printf("&^^^^^^^^^^^^%d %s\n\n", curr->wait_on_lock != NULL, &curr);
-		// printf("lock_acquire %d : %d\n", lock->holder->priority, curr->priority);
-        list_insert_ordered(&lock->holder->donations, &curr->d_elem, cmp_priority, NULL);
-
-        donate2(lock);
-		// printf("lock_acquire %d : %d\n", lock->holder->origin_priority, curr->priority);
-    }
+	if (!thread_mlfqs){
+		if (lock -> holder != NULL){
+			// lock을 현재 스레드에게 저장한다.(대기중)
+			curr->wait_on_lock = lock;
+			// printf("&^^^^^^^^^^^^%d %s\n\n", curr->wait_on_lock != NULL, &curr);
+			// printf("lock_acquire %d : %d\n", lock->holder->priority, curr->priority);
+			list_insert_ordered(&lock->holder->donations, &curr->d_elem, cmp_priority, NULL);
+			
+			donate2(lock);
+			// printf("lock_acquire %d : %d\n", lock->holder->origin_priority, curr->priority);
+		}
+	}	
 
 
 
@@ -266,24 +268,26 @@ lock_release (struct lock *lock) {
 	struct thread * curr = thread_current();
 	lock->holder = NULL;
 
-	if(!list_empty( &curr->donations ) ){
-		// printf("이거 돔?");
-		struct list_elem* temp = list_begin(&curr->donations);
-		while( temp != list_end(&curr->donations)  ){
-			struct thread *temp_th = list_entry( temp, struct thread, d_elem );
-			// printf("is_lock : %d\n", temp_th->wait_on_lock != NULL);
-			// printf("list_remve : %d, %d^_^\n",temp_th->priority, temp_th->origin_priority);
-			if( lock == temp_th->wait_on_lock ){
-				list_remove( &temp_th->d_elem );
-				list_remove( temp );
-			}
+	if (!thread_mlfqs){
+		if(!list_empty( &curr->donations ) ){
+			// printf("이거 돔?");
+			struct list_elem* temp = list_begin(&curr->donations);
+			while( temp != list_end(&curr->donations)  ){
+				struct thread *temp_th = list_entry( temp, struct thread, d_elem );
+				// printf("is_lock : %d\n", temp_th->wait_on_lock != NULL);
+				// printf("list_remve : %d, %d^_^\n",temp_th->priority, temp_th->origin_priority);
+				if( lock == temp_th->wait_on_lock ){
+					list_remove( &temp_th->d_elem );
+					list_remove( temp );
+				}
 
-			temp = list_next(temp);	
+				temp = list_next(temp);	
+			}
+			// list_sort(&thread_current()->donations, priority_less_d_elem, NULL);
 		}
-		// list_sort(&thread_current()->donations, priority_less_d_elem, NULL);
-	}
-	
-	update_priority();
+		
+		update_priority();
+	}	
 	
 	intr_set_level(old_level);
 
