@@ -26,6 +26,10 @@
    Do not modify this value. */
 #define THREAD_BASIC 0xd42df210
 
+int load_avg; // load_avg
+
+static struct list all_list; // 모든 스레드 리스트
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -335,7 +339,8 @@ thread_yield (void) {
 // set proirity of the current thread and reorder the ready_list
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	thread_current ()->init_priority = new_priority;
+	update_priority_for_donations();
 	preempt_priority();
 }
 
@@ -362,7 +367,7 @@ thread_get_nice (void) {
 int
 thread_get_load_avg (void) {
 	/* TODO: Your implementation goes here */
-	return 0;
+	return load_avg;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -435,6 +440,17 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	/* CUSTOM FIELD */
+	t->init_priority = priority;
+	t->wait_on_lock = NULL;
+	list_init(&t->donations);
+
+#ifdef USERPROG
+  t->pagedir = NULL;
+#endif
+
+  t->magic = THREAD_MAGIC;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -688,4 +704,3 @@ preempt_priority(void) {
     if (curr->priority < ready->priority) // ready_list에 현재 실행중인 스레드보다 우선순위가 높은 스레드가 있으면
         thread_yield();
 }
-
