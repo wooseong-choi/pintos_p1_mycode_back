@@ -110,6 +110,12 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
+
+	int init_priority; // initial priority
+	struct lock *wait_on_lock; // lock that the thread is waiting on
+	struct list donations; // list of donations
+	struct list_elem donation_elem; // list element for donations
+
 };
 
 /* If false (default), use round-robin scheduler.
@@ -152,6 +158,10 @@ bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void
 void thread_wakeup (int64_t global_ticks); // thread를 sleep_list에서 ready_list로 이동시키는(깨우는) 함수
 bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); // 두 스레드의 priority를 비교해서 a가 크면 true를 반환하는 함수
 void preempt_priority(void); // ready_list의 priority가 현재 스레드의 priority보다 높으면 양보하는 함수
-
+bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux); // 두 세마포어의 priority를 비교해서 a가 크면 true를 반환하는 함수
+bool cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux); // 두 스레드의 donation priority를 비교해서 a가 크면 true를 반환하는 함수
+void donate_priority(void); // lock을 가지고 있는 스레드의 donation list에서 가장 높은 priority를 가진 스레드의 priority를 현재 스레드에게 donate하는 함수
+void remove_donor(struct lock *lock); // lock을 가지고 있는 스레드의 donation list에서 현재 스레드를 제거하는 함수
+void update_priority_before_donations(void); // donation을 받기 전에 현재 스레드의 priority를 업데이트하는 함수
 
 #endif /* threads/thread.h */
