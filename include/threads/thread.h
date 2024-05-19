@@ -152,6 +152,6 @@ bool cmp_thread_ticks(const struct list_elem *a, const struct list_elem *b, void
 void thread_wakeup (int64_t global_ticks); // thread를 sleep_list에서 ready_list로 이동시키는(깨우는) 함수
 bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); // 두 스레드의 priority를 비교해서 a가 크면 true를 반환하는 함수
 void preempt_priority(void); // ready_list의 priority가 현재 스레드의 priority보다 높으면 양보하는 함수
-
+bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
 
 #endif /* threads/thread.h */
