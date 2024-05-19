@@ -110,12 +110,6 @@ struct thread {
 	/* Owned by thread.c. */
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
-
-	/* CUSTOM FIELD */
-	int init_priority; // original priority
-	struct lock *wait_on_lock; // lock that the thread is waiting for
-	struct list donations; // list of donations
-	struct list_elem donation_elem; // list element for donations
 };
 
 /* If false (default), use round-robin scheduler.
@@ -159,11 +153,5 @@ void thread_wakeup (int64_t global_ticks); // thread를 sleep_list에서 ready_l
 bool cmp_thread_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED); // 두 스레드의 priority를 비교해서 a가 크면 true를 반환하는 함수
 void preempt_priority(void); // ready_list의 priority가 현재 스레드의 priority보다 높으면 양보하는 함수
 bool cmp_sema_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
-bool cmp_donation_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
-void donate_priority(void);
-void remove_donor(struct lock *lock);
-void update_priority_for_donations(void);
-
-
 
 #endif /* threads/thread.h */
