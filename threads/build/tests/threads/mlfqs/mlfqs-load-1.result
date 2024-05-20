@@ -1,11 +1,12 @@
 FAIL
-Kernel panic in run: PANIC at ../../tests/threads/tests.c:93 in fail(): test failed
-Call stack: 0x80042138d2 0x8004216ed4 0x8004219f10 0x8004216d0e 0x8004206636 0x8004206783 0x8004206120
+Kernel panic in run: PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
+Call stack: 0x8004214108 0x8004214384 0x8004208259 0x800420de2d 0x8004209153 0x8004209571 0x800420db77 0x80042060f7
 Translation of call stack:
-0x00000080042138d2: debug_panic (lib/kernel/debug.c:32)
-0x0000008004216ed4: pass (tests/threads/tests.c:99)
-0x0000008004219f10: test_mlfqs_load_1 (tests/threads/mlfqs/mlfqs-load-1.c:31)
-0x0000008004216d0e: run_test (tests/threads/tests.c:57)
-0x0000008004206636: run_task (threads/init.c:252)
-0x0000008004206783: run_actions (threads/init.c:297)
-0x0000008004206120: main (threads/init.c:125)
+0x0000008004214108: debug_panic (lib/kernel/debug.c:32)
+0x0000008004214384: list_next (lib/kernel/list.c:79)
+0x0000008004208259: mlfqs_recalculate_priority (threads/thread.c:785 (discriminator 3))
+0x000000800420de2d: timer_interrupt (devices/timer.c:140)
+0x0000008004209153: intr_handler (threads/interrupt.c:353)
+0x0000008004209571: intr_entry (threads/intr-stubs.o:?)
+0x000000800420db77: timer_calibrate (devices/timer.c:59)
+0x00000080042060f7: main (threads/init.c:119)

@@ -10,18 +10,11 @@ Executing 'priority-donate-multiple2':
 (priority-donate-multiple2) begin
 (priority-donate-multiple2) Main thread should have priority 34.  Actual priority: 34.
 (priority-donate-multiple2) Main thread should have priority 36.  Actual priority: 36.
-(priority-donate-multiple2) Main thread should have priority 36.  Actual priority: 36.
-(priority-donate-multiple2) Thread b acquired lock b.
-(priority-donate-multiple2) Thread b finished.
-(priority-donate-multiple2) Thread a acquired lock a.
-(priority-donate-multiple2) Thread a finished.
-(priority-donate-multiple2) Thread c finished.
-(priority-donate-multiple2) Threads b, a, c should have just finished, in that order.
-(priority-donate-multiple2) Main thread should have priority 31.  Actual priority: 31.
-(priority-donate-multiple2) end
-Execution of 'priority-donate-multiple2' complete.
-Timer: 26 ticks
-Thread: 0 idle ticks, 26 kernel ticks, 0 user ticks
-Console: 1165 characters output
-Keyboard: 0 keys pressed
-Powering off...
+Kernel PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
+Call stack: 0x8004214108 0x8004214384 0x8004214e59 0x800421527b 0x800420a312 0x800420a90b 0x8004218cc2 0x8004217544 0x8004206636 0x8004206783 0x8004206120.
+The `backtrace' program can make call stacks useful.
+Read "Backtraces" in the "Debugging Tools" chapter
+of the Pintos documentation for more information.
+Timer: 25 ticks
+Thread: 0 idle ticks, 25 kernel ticks, 0 user ticks
+Console: 

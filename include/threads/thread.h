@@ -85,6 +85,12 @@ typedef int tid_t;
  * only because they are mutually exclusive: only a thread in the
  * ready state is on the run queue, whereas only a thread in the
  * blocked state is on a semaphore wait list. */
+
+#define PRI_MAX 63               
+#define NICE_DEFAULT 0
+#define RECENT_CPU_DEFAULT 0
+#define LOAD_AVG_DEFAULT 0
+
 struct thread {
 	/* Owned by thread.c. */
 	tid_t tid;                          /* Thread identifier. */
@@ -116,6 +122,9 @@ struct thread {
 	struct lock *wait_on_lock; // lock that the thread is waiting for
 	struct list donations; // list of donations
 	struct list_elem donation_elem; // list element for donations
+
+	int nice; // nice value
+	int recent_cpu; // recent cpu value
 
 };
 
@@ -165,5 +174,12 @@ void donate_priority(void);
 void remove_donor(struct lock *lock);
 void update_priority_for_donations(void);
 
+void mlfqs_calculate_priority (struct thread *t);
+void mlfqs_calculate_recent_cpu (struct thread *t);
+void mlfqs_calculate_load_avg (void);
+void mlfqs_increment_recent_cpu (void);
+void mlfqs_recalculate_priority (void);
+void mlfqs_recalculate_recent_cpu (void);
+void update_load_avg_and_recent_cpu (void);
 
 #endif /* threads/thread.h */

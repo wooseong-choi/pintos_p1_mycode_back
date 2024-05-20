@@ -1,14 +1,12 @@
 FAIL
-Some tick counts were missing or differed from those expected by more than 25.
-thread   actual <-> expected explanation
------- -------- --- -------- ----------------------------------------
-     0      300 <<< 672      Too small, by 347.
-     1      301 <<< 588      Too small, by 262.
-     2      301 <<< 492      Too small, by 166.
-     3      300 <<< 408      Too small, by 83.
-     4      301  =  316      
-     5      300 >>> 232      Too big, by 43.
-     6      301 >>> 152      Too big, by 124.
-     7      300 >>> 92       Too big, by 183.
-     8      300 >>> 40       Too big, by 235.
-     9      301 >>> 8        Too big, by 268.
+Kernel panic in run: PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
+Call stack: 0x8004214108 0x8004214384 0x8004208259 0x800420de2d 0x8004209153 0x8004209571 0x800420db77 0x80042060f7
+Translation of call stack:
+0x0000008004214108: debug_panic (lib/kernel/debug.c:32)
+0x0000008004214384: list_next (lib/kernel/list.c:79)
+0x0000008004208259: mlfqs_recalculate_priority (threads/thread.c:785 (discriminator 3))
+0x000000800420de2d: timer_interrupt (devices/timer.c:140)
+0x0000008004209153: intr_handler (threads/interrupt.c:353)
+0x0000008004209571: intr_entry (threads/intr-stubs.o:?)
+0x000000800420db77: timer_calibrate (devices/timer.c:59)
+0x00000080042060f7: main (threads/init.c:119)

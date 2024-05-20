@@ -1,25 +1,12 @@
 FAIL
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (mlfqs-block) begin
-  (mlfqs-block) Main thread acquiring lock.
-  (mlfqs-block) Main thread creating block thread, sleeping 25 seconds...
-  (mlfqs-block) Block thread spinning for 20 seconds...
-  (mlfqs-block) Block thread acquiring lock...
-  (mlfqs-block) Main thread spinning for 5 seconds...
-  (mlfqs-block) Main thread releasing lock.
-  (mlfqs-block) ...got it.
-  (mlfqs-block) Block thread should have already acquired lock.
-  (mlfqs-block) end
-Differences in `diff -u' format:
-  (mlfqs-block) begin
-  (mlfqs-block) Main thread acquiring lock.
-  (mlfqs-block) Main thread creating block thread, sleeping 25 seconds...
-  (mlfqs-block) Block thread spinning for 20 seconds...
-  (mlfqs-block) Block thread acquiring lock...
-  (mlfqs-block) Main thread spinning for 5 seconds...
-  (mlfqs-block) Main thread releasing lock.
-- (mlfqs-block) ...got it.
-  (mlfqs-block) Block thread should have already acquired lock.
-  (mlfqs-block) end
+Kernel panic in run: PANIC at ../../lib/kernel/list.c:78 in list_next(): assertion `is_head (elem) || is_interior (elem)' failed.
+Call stack: 0x8004214108 0x8004214384 0x8004208259 0x800420de2d 0x8004209153 0x8004209571 0x800420db77 0x80042060f7
+Translation of call stack:
+0x0000008004214108: debug_panic (lib/kernel/debug.c:32)
+0x0000008004214384: list_next (lib/kernel/list.c:79)
+0x0000008004208259: mlfqs_recalculate_priority (threads/thread.c:785 (discriminator 3))
+0x000000800420de2d: timer_interrupt (devices/timer.c:140)
+0x0000008004209153: intr_handler (threads/interrupt.c:353)
+0x0000008004209571: intr_entry (threads/intr-stubs.o:?)
+0x000000800420db77: timer_calibrate (devices/timer.c:59)
+0x00000080042060f7: main (threads/init.c:119)

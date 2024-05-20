@@ -132,6 +132,18 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick (); // update the cpu usage for running process
+
+  if (thread_mlfqs) {
+    mlfqs_increment_recent_cpu ();
+    if (ticks % 4 == 0) {
+      mlfqs_recalculate_priority ();
+      if (ticks % TIMER_FREQ == 0) {
+        mlfqs_recalculate_recent_cpu ();
+        mlfqs_calculate_load_avg ();
+      }
+    }
+  }
+
     thread_wakeup(ticks);
 }
 
@@ -190,4 +202,11 @@ real_time_sleep (int64_t num, int32_t denom) {
 		ASSERT (denom % 1000 == 0);
 		busy_wait (loops_per_tick * num / 1000 * TIMER_FREQ / (denom / 1000));
 	}
+}
+
+void
+update_load_avg_and_recent_cpu (void)
+{
+    mlfqs_calculate_load_avg();
+    mlfqs_recalculate_recent_cpu();
 }

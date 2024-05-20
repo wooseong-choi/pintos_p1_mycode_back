@@ -9,4 +9,4 @@ threads/thread.o: ../../threads/thread.c ../../include/threads/thread.h \
  ../../include/threads/synch.h ../../include/threads/vaddr.h \
  ../../include/threads/loader.h ../../include/intrinsic.h \
  ../../include/threads/mmu.h ../../include/threads/pte.h \
- ../../include/lib/kernel/list.h
+ ../../include/lib/kernel/list.h ../../include/threads/fixed_point.h
