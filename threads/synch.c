@@ -354,6 +354,7 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	
 	// list_insert_ordered (&cond->waiters, &waiter.elem, cmp_priority, NULL);
 	list_sort(&cond->waiters, cmp_priority_use_sema, NULL);
+	// 이 시점에서는 sema 안의 thread가 없기 때문에 정렬로 넣는게 의미가 없음.
 	list_insert_ordered (&cond->waiters, &waiter.elem, cmp_priority_use_sema, NULL);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
