@@ -102,8 +102,6 @@ timer_sleep (int64_t ticks) {
 	int64_t start = timer_ticks ();				// 현재 시간 저장
 
 	ASSERT (intr_get_level () == INTR_ON);		// 현재 인터럽트가 활성화된 상태인지 확인
-	// while (timer_elapsed (start) < ticks)		// 경과한 시간이 tick보다 작으면 
-	// 	thread_yield ();						// 다른 스레드에게 CPU 양보
 
 	if (timer_elapsed (start) < ticks)
 		thread_sleep(start + ticks);
@@ -139,9 +137,19 @@ timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;							// 타이머 인터럽트가 발생한 횟수 업데이트
 	thread_tick ();						// 현재 실행 중인 스레드의 실행 시간 측정
 
-	int64_t min_ticks = get_global_ticks();
-	if (min_ticks <= ticks)
-		thread_wakeup(ticks);
+	if (thread_mlfqs)
+	{
+		increase_recent_cpu();
+
+		if (timer_ticks() % TIMER_FREQ == 0) {
+			calculate_load_avg(thread_current());
+			recalculate_recent_cpu();
+		}
+		if (timer_ticks() % 4 == 0)
+			recalculate_priority();
+	}
+	thread_wakeup(ticks);
+
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
